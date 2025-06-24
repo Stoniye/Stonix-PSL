@@ -1,0 +1,10 @@
+DATA_PATH = "../datasets/lightweight-data.txt"  # Training Data Path
+MODEL_PATH = "../trained models/basic_stonix_small" # Model Parameter Path
+EMBEDDING_DIM = 64 #size of the vector used to represent each character (higher: better relationship understanding but longer training)
+HIDDEN_SIZE = 128 #context understanding (higher: better context understanding but slower training)
+LEARNING_RATE = 0.01 #rate which modifies the weight (higher: faster training but overshoot)
+NUM_EPOCHS = 1000 #number of iterations of the training data (higher: better training but longer training)
+START_TOKEN = "<SOS>" # Start of Sequenz
+END_TOKEN = "<EOS>" # End of Sequenz
+UNKNOWN_TOKEN = "<UNK>" # Unknown Symbol
+PADDING_TOKEN = "<PAD>" # Sequenz Padding

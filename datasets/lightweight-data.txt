@@ -1,0 +1,4 @@
+hallo welt. wie geht es dir? mir geht es gut.
+hallo. ich bin ein kleines sprachmodell.
+wie geht es dir heute? mir geht es sehr gut, danke.
+hallo welt.
