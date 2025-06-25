@@ -1,4 +1,4 @@
-import numpy as np
+from cpu_gpu_manager import np, USE_GPU_ENABLED, np_cpu
 from math_functions import softmax
 from public_variables import UNKNOWN_TOKEN, START_TOKEN, END_TOKEN
 
@@ -31,7 +31,12 @@ def chat_with_model(model, char_to_idx, idx_to_char, initial_hidden_state=None, 
             response_hidden_state, output_logits, _ = model.forward_pass(next_input_for_gen, response_hidden_state)
 
             probabilities = softmax(output_logits / temperature)
-            next_char_idx = np.random.choice(model.vocab_size, p=probabilities.flatten())
+
+            if USE_GPU_ENABLED:
+                probabilities_cpu = probabilities.get()
+                next_char_idx = np_cpu.random.choice(model.vocab_size, size=1, p=probabilities_cpu.flatten())[0]
+            else:
+                next_char_idx = np.random.choice(model.vocab_size, size=1, p=probabilities.flatten())[0]
 
             if next_char_idx == char_to_idx[END_TOKEN]:
                 break

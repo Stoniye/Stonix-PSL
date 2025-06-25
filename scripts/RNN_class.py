@@ -1,6 +1,7 @@
-import numpy as np
+from cpu_gpu_manager import np, np_cpu, USE_GPU_ENABLED
 from math_functions import softmax, tanh, tanh_derivative, cross_entropy_loss, cross_entropy_loss_derivative
 from public_variables import END_TOKEN, UNKNOWN_TOKEN
+
 
 class RNN:  # Recurrent Neural Network
     def __init__(self, vocab_size, embedding_dim, hidden_size, learning_rate):
@@ -10,11 +11,9 @@ class RNN:  # Recurrent Neural Network
         self.learning_rate = learning_rate
 
         self.W_embed = np.random.uniform(-0.1, 0.1, (vocab_size, embedding_dim))
-
         self.W_xh = np.random.uniform(-0.1, 0.1, (embedding_dim, hidden_size))
         self.W_hh = np.random.uniform(-0.1, 0.1, (hidden_size, hidden_size))
         self.b_h = np.zeros((1, hidden_size))
-
         self.W_hy = np.random.uniform(-0.1, 0.1, (hidden_size, vocab_size))
         self.b_y = np.zeros((1, vocab_size))
 
@@ -89,7 +88,7 @@ class RNN:  # Recurrent Neural Network
         self.reset_gradients()
 
     def generate_text(self, char_to_idx, idx_to_char, start_char, num_chars_to_generate=50, temperature=1.0):
-        current_hidden_state = np.zeros((1, self.hidden_size))
+        current_hidden_state = np.zeros((1, self.hidden_size), dtype=np.float32)
 
         generated_text = start_char
         current_input_idx = char_to_idx.get(start_char, char_to_idx[UNKNOWN_TOKEN])
@@ -101,7 +100,11 @@ class RNN:  # Recurrent Neural Network
 
             probabilities = softmax(output_logits / temperature)
 
-            next_char_idx = np.random.choice(self.vocab_size, p=probabilities.flatten())
+            if USE_GPU_ENABLED:
+                probabilities_cpu = probabilities.get()
+                next_char_idx = np_cpu.random.choice(self.vocab_size, p=probabilities_cpu.flatten())
+            else:
+                next_char_idx = np.random.choice(self.vocab_size, p=probabilities.flatten())
 
             if next_char_idx == char_to_idx[END_TOKEN]:
                 break
@@ -117,15 +120,16 @@ class RNN:  # Recurrent Neural Network
         losses = []
 
         for epoch in range(epochs):
-            current_hidden_state = np.zeros((1, self.hidden_size))
+            current_hidden_state = np.zeros((1, self.hidden_size), dtype=np.float32)
+
             epoch_loss = 0
 
             caches = []
             target_indices_for_bptt = []
 
             for i in range(len(x_train)):
-                input_idx = x_train[i]
-                target_idx = y_train[i]
+                input_idx = int(x_train[i])
+                target_idx = int(y_train[i])
 
                 current_hidden_state, output_logits, cache = self.forward_pass(input_idx, current_hidden_state)
 
@@ -155,7 +159,8 @@ class RNN:  # Recurrent Neural Network
 
             if (epoch + 1) % print_every == 0:
                 print(f"Epoch {epoch + 1}/{epochs}, Average Loss: {avg_epoch_loss:.4f}")
-                generated_text = self.generate_text(char_to_index, index_to_char, 'h', num_chars_to_generate=50, temperature=0.8)
+                generated_text = self.generate_text(char_to_index, index_to_char, 'h', num_chars_to_generate=50,
+                                                    temperature=0.8)
                 print(f"Generate Text (Epoch {epoch + 1}): {generated_text}\n")
 
         print(f"Training total loss: {losses[-1]:.4f}")
@@ -167,20 +172,46 @@ class RNN:  # Recurrent Neural Network
             if norm > max_norm:
                 param_grad *= (max_norm / norm)
 
+    def transfer_parameters_to_gpu(self):
+        if not USE_GPU_ENABLED: return
+        print("Transferring model parameters to GPU...")
+        for attr in ['W_embed', 'W_xh', 'W_hh', 'b_h', 'W_hy', 'b_y']:
+            setattr(self, attr, np.asarray(getattr(self, attr)))
+        for attr in ['dW_embed', 'dW_xh', 'dW_hh', 'db_h', 'dW_hy', 'db_y']:
+            setattr(self, attr, np.asarray(getattr(self, attr)))
+
+    def transfer_parameters_to_cpu(self):
+        if not USE_GPU_ENABLED: return
+        print("Transferring model parameters to CPU for saving...")
+        for attr in ['W_embed', 'W_xh', 'W_hh', 'b_h', 'W_hy', 'b_y']:
+            param = getattr(self, attr)
+            if hasattr(param, 'get'):
+                setattr(self, attr, param.get())
+        for attr in ['dW_embed', 'dW_xh', 'dW_hh', 'db_h', 'dW_hy', 'db_y']:
+            param = getattr(self, attr)
+            if hasattr(param, 'get'):
+                setattr(self, attr, param.get())
+
     def save_model(self, filepath):
-        np.savez(filepath,
-                 W_embed=self.W_embed,
-                 W_xh=self.W_xh,
-                 W_hh=self.W_hh,
-                 b_h=self.b_h,
-                 W_hy=self.W_hy,
-                 b_y=self.b_y)
+        if USE_GPU_ENABLED:
+            self.transfer_parameters_to_cpu()
+
+        np_cpu.savez(filepath,
+                     W_embed=self.W_embed, W_xh=self.W_xh, W_hh=self.W_hh, b_h=self.b_h,
+                     W_hy=self.W_hy, b_y=self.b_y)
+
+        if USE_GPU_ENABLED:
+            self.transfer_parameters_to_gpu()
 
     def load_model(self, filepath):
-        data = np.load(filepath)
+        data = np_cpu.load(filepath, allow_pickle=True)
+
         self.W_embed = data['W_embed']
         self.W_xh = data['W_xh']
         self.W_hh = data['W_hh']
         self.b_h = data['b_h']
         self.W_hy = data['W_hy']
         self.b_y = data['b_y']
+
+        if USE_GPU_ENABLED:
+            self.transfer_parameters_to_gpu()

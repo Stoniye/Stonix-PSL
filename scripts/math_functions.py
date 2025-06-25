@@ -1,4 +1,4 @@
-import numpy as np
+from cpu_gpu_manager import np
 
 def softmax(x):
     e_x = np.exp(x - np.max(x, axis=-1, keepdims=True))

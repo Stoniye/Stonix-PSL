@@ -1,4 +1,4 @@
-import numpy as np
+from cpu_gpu_manager import np
 from public_variables import PADDING_TOKEN, START_TOKEN, END_TOKEN, UNKNOWN_TOKEN
 
 def load_data(path):
