@@ -14,30 +14,34 @@ def chat_with_model(model, char_to_idx, idx_to_char, initial_hidden_state=None, 
     while True:
         user_input = input("You: ")
         if user_input.lower() == 'exit':
-            print("Chat ended")
-            break
+            return "end"
+        if user_input.lower() == 'train':
+            return "train"
 
-        processed_input_indices = [char_to_idx.get(char, char_to_idx[UNKNOWN_TOKEN]) for char in user_input]
+        processed_input_indices = [char_to_idx.get(char, char_to_idx[UNKNOWN_TOKEN]) for char in user_input] #convert input to indices
 
+        #update hidden stated based on user input (for context)
         for input_idx in processed_input_indices:
             current_hidden_state, _, _ = model.forward_pass(input_idx, current_hidden_state)
 
-        response_hidden_state = np.copy(current_hidden_state)
+        response_hidden_state = np.copy(current_hidden_state) #copy the "context knowledge" of the input
 
-        next_input_for_gen = char_to_idx[START_TOKEN]
+        next_input_for_gen = char_to_idx[START_TOKEN] #create start token for the prediction
 
         generated_chars = []
         for _ in range(num_chars_to_generate):
-            response_hidden_state, output_logits, _ = model.forward_pass(next_input_for_gen, response_hidden_state)
+            response_hidden_state, output_logits, _ = model.forward_pass(next_input_for_gen, response_hidden_state) #get "raw" probabilities
 
-            probabilities = softmax(output_logits / temperature)
+            probabilities = softmax(output_logits / temperature) #get real probabilities based on the temperature
 
+            #generate next char random based on the probabilities
             if USE_GPU_ENABLED:
                 probabilities_cpu = probabilities.get()
                 next_char_idx = np_cpu.random.choice(model.vocab_size, size=1, p=probabilities_cpu.flatten())[0]
             else:
                 next_char_idx = np.random.choice(model.vocab_size, size=1, p=probabilities.flatten())[0]
 
+            #end generation if end token is found
             if next_char_idx == char_to_idx[END_TOKEN]:
                 break
 

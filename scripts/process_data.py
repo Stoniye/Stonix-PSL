@@ -7,7 +7,7 @@ def load_data(path):
     return text
 
 def create_vocab(text):
-    unique_chars = sorted(list(set(text)))
+    unique_chars = sorted(list(set(text))) #get every unique character in training data
 
     all_chars = [PADDING_TOKEN, START_TOKEN, END_TOKEN, UNKNOWN_TOKEN] + unique_chars
 
@@ -24,7 +24,7 @@ def text_to_indices(text, char_to_index):
         indices.append(char_to_index.get(char, char_to_index[UNKNOWN_TOKEN])) # Append Unknown Token if not in vocab
     return indices
 
-def create_training_pairs(indices, char_to_index):
+def create_training_pairs(indices, char_to_index): #craete training pair, x = char right now, y = next char (should be predicted)
     x = []
     y = []
 

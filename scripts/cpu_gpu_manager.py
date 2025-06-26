@@ -10,10 +10,10 @@ if USE_CUDA:
         if np_gpu.cuda.is_available():
             np = np_gpu
             USE_GPU_ENABLED = True
-            print("Using CuPy")
+            print("Using CuPy (using GPU with better performance)")
         else:
             print("WARNING: 'USE_CUDA' public variable set, but no CUDA-enabled GPU found or configured. Falling back to NumPy (CPU).")
     except ImportError:
         print("WARNING: 'USE_CUDA' public variable set, but CuPy not found. Falling back to NumPy (CPU).")
 else:
-    print("Using NumPy")
+    print("Using NumPy (using CPU with worse performance)")
